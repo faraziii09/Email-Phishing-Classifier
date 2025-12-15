@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* Cyberpunk panel + animated neon border */
+.cyber-dashboard {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cyber-dashboard { grid-template-columns: 1fr; }
+}
+
+.cyber-panel {
+  background: linear-gradient(180deg, rgba(6,12,30,0.65), rgba(2,6,18,0.6));
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid rgba(24,160,255,0.06);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(2,6,15,0.6);
+}
+
+/* animated neon frame */
+.cyber-panel::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 14px;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(24,160,255,0.18),
+    rgba(124,0,255,0.12),
+    rgba(92,224,255,0.14),
+    rgba(255,0,196,0.10));
+  filter: blur(16px);
+  opacity: 0.9;
+  animation: borderShift 6s linear infinite;
+  mix-blend-mode: screen;
+}
+@keyframes borderShift {
+  0% { transform: translateX(-10%); }
+  50% { transform: translateX(10%); }
+  100% { transform: translateX(-10%); }
+}
+
+/* header counters */
+.counters {
+  display:flex;flex-direction:column;gap:12px;margin-bottom:12px;
+}
+.counter {
+  display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.02);
+}
+.counter .title { color: #9aa8b8; font-size:13px }
+.counter .value { font-family: 'Orbitron', sans-serif; font-size:22px; color: #bffcff; text-shadow: 0 6px 22px rgba(24,160,255,0.12); }
+
+/* chart containers */
+.chart-wrap { background: transparent; padding:8px; border-radius:8px; }
+.pulse-glow { box-shadow: 0 12px 40px rgba(24,160,255,0.08); border-radius:10px; padding:6px; }
+
+/* little legend badges */
+.legend-badge {
+  display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;margin-right:8px;
+  color:#001725;background:linear-gradient(90deg,#18a0ff,#5ce0ff);
+  box-shadow: 0 6px 24px rgba(24,160,255,0.12);
+}
+
+/* aesthetic note */
+.muted { color: #9aa8b8; }
+</style>
+
+<h3>Dashboard</h3>
+
+<div class="cyber-dashboard">
+  <!-- LEFT: totals + donut -->
+  <div class="cyber-panel">
+    <div class="counters">
+      <div class="counter">
+        <div>
+          <div class="title">Total Legitimate</div>
+          <div class="muted small">Your safe emails</div>
+        </div>
+        <div class="value" id="totalLegit">0</div>
+      </div>
+
+      <div class="counter">
+        <div>
+          <div class="title">Total Phishing / Spam</div>
+          <div class="muted small">Potential threats</div>
+        </div>
+        <div class="value" id="totalSpam">0</div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;" class="chart-wrap pulse-glow">
+      <canvas id="pieChart" width="320" height="260"></canvas>
+    </div>
+
+    <div style="margin-top:12px" class="muted small">
+      <span class="legend-badge" style="background:linear-gradient(90deg,#6df0c6,#2fd6a9)">LEGIT</span>
+      <span class="legend-badge" style="background:linear-gradient(90deg,#ff6b6b,#ff3b3b)">SPAM</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: bar/time breakdown -->
+  <div class="cyber-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <h4 style="margin:0">Uploads overview</h4>
+        <div class="muted small">Last uploads breakdown</div>
+      </div>
+      <div class="muted small">Dashboard</div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="barChart" height="320"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* ------------------------------------------------------------------
+  Prepare data (server-provided)
+   - stats is list of {label,count}
+-------------------------------------------------------------------*/
+const stats = {{ stats|tojson }};
+let legit = 0, spam = 0;
+for (const s of stats) {
+  const label = (s.label || '').toString().toLowerCase();
+  const count = Number(s.count || 0);
+  if (label.includes('phish') || label.includes('spam')) spam += count;
+  else legit += count;
+}
+
+/* -----------------------
+   Utility: gradient helpers
+   ----------------------- */
+function gradientFor(ctx, area, colorStops) {
+  const g = ctx.createLinearGradient(0, area.top, 0, area.bottom);
+  for (const stop of colorStops) {
+    g.addColorStop(stop.pos, stop.color);
+  }
+  return g;
+}
+
+/* -----------------------
+   Glow plugin for Chart.js
+   draws soft outer glow rectangle behind chart area
+   ----------------------- */
+const glowPlugin = {
+  id: 'glowPlugin',
+  beforeDraw(chart, args, options) {
+    const ctx = chart.ctx;
+    const area = chart.chartArea;
+    if (!area) return;
+    ctx.save();
+
+    // configurable options
+    const glowColor = (options && options.color) || 'rgba(24,160,255,0.65)';
+    const blur = (options && options.blur) || 28;
+    const strokeWidth = (options && options.width) || 10;
+
+    ctx.shadowBlur = blur;
+    ctx.shadowColor = glowColor;
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth = strokeWidth;
+    ctx.beginPath();
+    // draw a rounded rectangle stroke around the chartArea
+    const pad = 6;
+    const x = area.left - pad, y = area.top - pad;
+    const w = (area.right - area.left) + pad*2;
+    const h = (area.bottom - area.top) + pad*2;
+    const r = 14;
+    // rounded rect
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.restore();
+  }
+};
+Chart.register(glowPlugin);
+
+/* -----------------------
+   Doughnut (pie) chart
+   ----------------------- */
+const pieCtx = document.getElementById('pieChart').getContext('2d');
+const pieGradient = pieCtx.createLinearGradient(0, 0, 0, 260);
+pieGradient.addColorStop(0, 'rgba(0,255,255,0.95)');
+pieGradient.addColorStop(1, 'rgba(0,180,200,0.55)');
+const pieGradient2 = pieCtx.createLinearGradient(0, 0, 0, 260);
+pieGradient2.addColorStop(0, 'rgba(255,50,200,0.95)');
+pieGradient2.addColorStop(1, 'rgba(200,0,150,0.55)');
+
+const pie = new Chart(pieCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Legitimate','Phishing / Spam'],
+    datasets: [{
+      data: [legit, spam],
+      backgroundColor: [pieGradient, pieGradient2],
+      hoverBackgroundColor: ['rgba(0,255,255,1)', 'rgba(255,50,200,1)'],
+      borderColor: 'rgba(0,0,0,0.35)',
+      borderWidth: 2,
+      cutout: '55%'
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { animateRotate: true, duration: 1400, easing: 'easeOutQuart' },
+    plugins: {
+      glowPlugin: { color: 'rgba(24,160,255,0.45)', blur: 26, width: 12 },
+      legend: {
+        display: false
+      },
+      tooltip: {
+        backgroundColor: '#000',
+        titleColor: '#fff',
+        bodyColor: '#bffcff',
+        callbacks: {
+          label: function(ctx) {
+            const v = ctx.raw || 0;
+            const total = ctx.dataset.data.reduce((a,b)=>a+b,0) || 1;
+            const pct = Math.round((v/total)*100);
+            return `${ctx.label}: ${v} (${pct}%)`;
+          }
+        },
+        padding: 10
+      }
+    },
+    elements: {
+      arc: { borderRadius: 8 }
+    }
+  }
+});
+
+/* show nice center text animation for pie */
+(function animatePieCenter() {
+  const canvas = pieCtx.canvas;
+  const ctx = pieCtx;
+  const centerX = (pie.chartArea.left + pie.chartArea.right) / 2;
+  const centerY = (pie.chartArea.top + pie.chartArea.bottom) / 2;
+  // We will draw center label using plugin (Chart.js 3+), but keep simple: show totals in counters instead.
+})();
+
+/* -----------------------
+   Bar chart (stacked single-group)
+   ----------------------- */
+const barCtx = document.getElementById('barChart').getContext('2d');
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+const bar = new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Legit','Spam'],
+    datasets: [{
+      label: 'Total',
+      data: [legit, spam],
+      backgroundColor: function(context) {
+        const i = context.dataIndex;
+        if (i === 0) {
+          const g = context.chart.ctx.createLinearGradient(0,0,0,300);
+          g.addColorStop(0,'rgba(0,255,255,0.95)');
+          g.addColorStop(1,'rgba(0,120,150,0.45)');
+          return g;
+        } else {
+          const g2 = context.chart.ctx.createLinearGradient(0,0,0,300);
+          g2.addColorStop(0,'rgba(255,70,210,0.95)');
+          g2.addColorStop(1,'rgba(160,0,110,0.45)');
+          return g2;
+        }
+      },
+      borderColor: 'rgba(255,255,255,0.06)',
+      borderWidth: 1,
+      maxBarThickness: 80,
+      borderRadius: 10,
+      barPercentage: 0.7
+    }]
+  },
+  options: {
+    responsive:true,
+    maintainAspectRatio:false,
+    animation: { duration: 1400, easing: 'easeOutQuart' },
+    plugins: {
+      glowPlugin: { color: 'rgba(124,0,255,0.18)', blur: 30, width: 12 },
+      legend: { display:false },
+      tooltip: {
+        backgroundColor:'#000',
+        titleColor:'#fff',
+        bodyColor:'#bffcff',
+        padding:10
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color:'#bffcff', font: { weight:'600' } },
+        grid: { display:false }
+      },
+      y: {
+        beginAtZero:true,
+        ticks: { color:'#bffcff', stepSize: 1 },
+        grid: { color:'rgba(0,255,255,0.06)' }
+      }
+    }
+  }
+});
+
+/* -----------------------
+   Animated counters (neon count-up)
+   ----------------------- */
+function animateValue(elId, start, end, duration) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const range = end - start;
+  const minTimer = 50;
+  const stepTime = Math.max(Math.floor(duration / Math.abs(range || 1)), minTimer);
+  let current = start;
+  const stopTime = Date.now() + duration;
+  const timer = setInterval(function() {
+    const now = Date.now();
+    const remaining = Math.max((stopTime - now) / duration, 0);
+    const val = Math.round(end - remaining * range);
+    el.textContent = val;
+    if (val === end) {
+      clearInterval(timer);
+    }
+  }, stepTime);
+}
+
+// kick off counters with a tiny delay so charts draw first
+setTimeout(() => {
+  animateValue('totalLegit', 0, legit, 1000);
+  animateValue('totalSpam', 0, spam, 1000);
+}, 250);
+
+/* subtle breathing glow on counters */
+(function pulseCounters() {
+  const elL = document.getElementById('totalLegit');
+  const elS = document.getElementById('totalSpam');
+  if(!elL || !elS) return;
+  elL.style.transition = 'text-shadow 1.4s ease-in-out';
+  elS.style.transition = 'text-shadow 1.4s ease-in-out';
+  let on = true;
+  setInterval(()=>{
+    if(on) {
+      elL.style.textShadow = '0 8px 28px rgba(0,255,255,0.22)';
+      elS.style.textShadow = '0 8px 28px rgba(255,50,200,0.22)';
+    } else {
+      elL.style.textShadow = '0 4px 10px rgba(0,255,255,0.08)';
+      elS.style.textShadow = '0 4px 10px rgba(255,50,200,0.08)';
+    }
+    on = !on;
+  }, 1600);
+})();
+</script>
+
+{% endblock %}

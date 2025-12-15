@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid-layout">
+    <section class="card cyber-card upload-card">
+        <div class="card-head">
+            <h3>Upload an Email (.eml)</h3>
+            <small class="muted">Drop .eml or use the selector</small>
+        </div>
+        <div class="card-body">
+            <form id="uploadForm" method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+                <div class="dropzone" id="dropzone" tabindex="0">
+                    <input id="fileInput" name="file" type="file" accept=".eml" required>
+                    <div class="drop-inner">
+                        <div class="upload-ico">📧</div>
+                        <div class="upload-text">
+                            <strong>Drop .eml file here</strong>
+                            <div class="muted">or click to browse</div>
+                        </div>
+                        <div id="fileName" class="file-name muted"></div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="classifyBtn" type="submit" class="btn neon-btn" disabled>Classify Email</button>
+                    <button id="resetBtn" type="button" class="btn btn-ghost">Reset</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <aside class="card cyber-card stats-card">
+        <div class="card-head"><h4>System Overview</h4></div>
+        <div class="card-body stats-grid">
+            <div class="stat"><div class="stat-title">Threat Level</div><div class="stat-value" id="threatLevel">—</div><div class="muted small">live</div></div>
+            <div class="stat"><div class="stat-title">Last Scan</div><div class="stat-value">—</div><div class="muted small">—</div></div>
+            <div class="stat"><div class="stat-title">Active Models</div><div class="stat-value">1</div><div class="muted small">model.joblib</div></div>
+            <div class="stat"><div class="stat-title">History</div><div class="stat-value"><a href="{{ url_for('history') }}">Open</a></div><div class="muted small">view uploads</div></div>
+        </div>
+        <hr class="dashed">
+        <div class="card-body small-controls">
+            <div class="control">
+                <label>Advanced Analysis</label>
+                <div class="toggle">
+                    <input id="advToggle" type="checkbox">
+                    <label for="advToggle" class="toggle-btn"></label>
+                </div>
+            </div>
+            <div class="control">
+                <label>Show Raw Email</label>
+                <div class="toggle">
+                    <input id="rawToggle" type="checkbox">
+                    <label for="rawToggle" class="toggle-btn"></label>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<div id="overlay" class="overlay hidden">
+    <div class="loader">
+        <div class="spinner"></div>
+        <div class="loader-text">Analyzing &ndash; Neural nets warming up</div>
+    </div>
+</div>
+{% endblock %}

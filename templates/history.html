@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Your Upload History</h3>
+
+<div class="card cyber-card">
+  <div class="card-body">
+    {% if emails %}
+      <table class="table table-dark table-striped">
+        <thead>
+          <tr><th>Uploaded</th><th>File</th><th>Subject</th><th>Result</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for e in emails %}
+            <tr>
+              <td>{{ e['created_at'] }}</td>
+              <td>{{ e['filename'] }}</td>
+              <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e['subject'] }}</td>
+              <td>
+                {% if 'phish' in (e['label'] or '').lower() %}
+                  <span class="badge bg-danger">{{ e['label'] }}</span>
+                {% else %}
+                  <span class="badge bg-success">{{ e['label'] }}</span>
+                {% endif %}
+              </td>
+              <td><a href="{{ url_for('result', email_id=e['id']) }}" class="btn btn-sm btn-ghost">View</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No uploads yet. Use Upload to analyze .eml files.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

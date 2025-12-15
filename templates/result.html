@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="result-wrap">
+  <div class="result-header d-flex justify-content-between align-items-center">
+    <h2>Result</h2>
+    <a href="{{ url_for('history') }}" class="btn btn-sm btn-ghost">Back to history</a>
+  </div>
+
+  <div class="result-grid">
+    <!-- Left summary block -->
+    <div class="card cyber-card summary">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h4>Label</h4>
+            {% if 'phish' in (email['label'] or '').lower() %}
+              <div class="neon-badge danger">{{ email['label'] }}</div>
+            {% else %}
+              <div class="neon-badge ok">{{ email['label'] }}</div>
+            {% endif %}
+          </div>
+
+          <div>
+            <h5>Confidence</h5>
+            <div class="radial" data-val="{{ email['confidence'] }}">
+              <span class="radial-text">{{ email['confidence'] }}%</span>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>From:</strong> {{ email['sender'] }}</p>
+        <p><strong>Subject:</strong> {{ email['subject'] }}</p>
+        <p><strong>Uploaded at:</strong> {{ email['created_at'] }}</p>
+      </div>
+    </div>
+
+    <!-- Right body snippet -->
+    <div class="card cyber-card details">
+      <div class="card-body">
+        <h5>Body Snippet</h5>
+        <pre class="snippet">
+{% if email['snippet'] %}
+{{ email['snippet'] }}
+{% else %}
+⚡ No textual content detected in this email.
+🔹 Based on metadata and URLs, this email is classified as:
+   {{ email['label'] }} with {{ email['confidence'] }}% confidence.
+🔹 Be cautious with links and attachments in suspicious emails.
+{% endif %}
+        </pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.radial').forEach(el => {
+    const v = parseFloat(el.dataset.val) || 0;
+    el.style.setProperty('--p', (v) + '%');
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="center-wrap">
+  <div class="card cyber-card auth-card">
+    <div class="card-body">
+      <h3>Create account</h3>
+      <form method="post" action="{{ url_for('register') }}">
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" name="password" class="form-control" required>
+        </div>
+
+        <div class="actions">
+          <button class="btn neon-btn">Register</button>
+          <a class="btn btn-ghost" href="{{ url_for('login') }}">Sign in</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
