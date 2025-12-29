@@ -1,56 +1,130 @@
-Email Phishing Classifier Web App
+````md
+# Email Phishing Classifier
 
-This project is a Flask-based web application that allows users to upload emails and automatically detect phishing or spam content using a machine learning model (Logistic Regression). It includes modern phishing detection features such as URL analysis, suspicious attachments, script checks, and header verification.
+A web-based **Email Phishing Detection System** built with **Flask** and **Machine Learning**.  
+Users can upload **.eml** email files, and the app classifies them as **Phishing/Spam** or **Legitimate**, along with a **confidence score**.
 
-Features
+This project was developed as part of the **Digital Forensics Lab**.
 
-User Authentication: Registration and login system with hashed passwords.
+---
 
-Email Upload & Classification: Users can upload .eml files to classify as Legitimate or Phishing/Spam.
+## Project Structure
 
-Dashboard & History: View past uploaded emails, classification results, and statistics.
+Key files and folders in this repository:
 
-Modern Features for Detection:
+- `app.py` — Main Flask application
+- `train_model.py` — Model training script
+- `model.joblib` — Trained Logistic Regression model
+- `database.db` — SQLite database (auto-created on first run)
+- `requirements.txt` — Python dependencies
+- `templates/` — HTML templates for the web interface
+- `static/` — CSS and JavaScript assets
+- `uploads/` — Uploaded email files
+- `README.md` — Project documentation
 
-Detect URLs and suspicious patterns (e.g., punycode, scripts, base64).
+---
 
-Check attachments for risky extensions.
+## Features
 
-Analyze email headers for SPF and DKIM failures.
+- User registration and login
+- Upload emails in `.eml` format
+- Phishing detection with confidence score
+- Per-user email history
+- Dashboard with phishing vs. legitimate email statistics
+- Secure password hashing
+- SQLite-based storage
 
-Secure Storage: Uploaded emails are stored with unique filenames; sensitive data is stored in a SQLite database (local only).
+---
 
-Installation
+## Detection Approach
 
-Clone the repository
+Classification is based on a **hybrid approach**: Machine Learning + Rule-Based security checks.  
+The final result combines the ML prediction with rule-based signals to improve robustness.
 
-git clone <your-repo-url>
-cd <repo-folder>
+### Machine Learning Components
 
+- Full email text (subject + body)
+- URL count / presence signals
+- TF-IDF vectorization
+- Logistic Regression classifier
 
-Create a virtual environment and install dependencies
+### Rule-Based Security Checks
 
-python -m venv venv
-source venv/bin/activate   # Linux/Mac
-venv\Scripts\activate      # Windows
+- URL presence in the email body
+- Suspicious phishing keywords (e.g., `urgent`, `verify`, `bank`, `login`)
+- JavaScript or `<script>` injection detection
+- Base64-encoded content detection
+- Suspicious attachment extensions (e.g., `.exe`, `.zip`, `.js`)
+- Punycode domain detection (`xn--`)
+- SPF failure detection
+- DKIM failure detection
+
+---
+
+## Technologies Used
+
+- Python
+- Flask
+- SQLite
+- scikit-learn
+- pandas
+- joblib
+- HTML / CSS / JavaScript
+
+---
+
+## Getting Started
+
+### 1) Install Dependencies
+
+```bash
 pip install -r requirements.txt
+````
 
+### 2) (Optional) Train the Model
 
-Prepare required files
+```bash
+python train_model.py
+```
 
-Model: model.joblib – Pre-trained Logistic Regression model.
+### 3) Run the Flask App
 
-Database: database.db will be auto-created on first run.
-
-Uploads Folder: Ensure an uploads/ folder exists (app will create it automatically).
-
-⚠️ The original training CSV is not included due to size constraints. You can train your own model using train_model.py and your dataset.
-
-Run the application
-
+```bash
 python app.py
+```
 
+### 4) Open in Your Browser
 
-Visit http://127.0.0.1:5000 to access the app.
+```text
+http://127.0.0.1:5000
+```
 
-New users should register first, then login to upload emails.
+---
+
+## Usage
+
+1. Register a new user account
+2. Log in to the system
+3. Upload a `.eml` email file
+4. View the classification result and confidence score
+5. Review email history and dashboard statistics
+
+---
+
+## Dataset
+
+**CEAS_08 Dataset**
+
+* Contains labeled phishing and legitimate emails
+* Used for training the Logistic Regression model
+
+---
+
+## Future Improvements
+
+* Real-time email scanning
+* Deep learning models (LSTM / BERT)
+* Browser extension support
+* Email server integration (IMAP)
+* Advanced email header analysis
+
